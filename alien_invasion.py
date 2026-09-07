@@ -19,7 +19,7 @@ class AlienInvasion:
                 if event.type == pygame.QUIT:
                     sys.exit()
             
-            # make the most recently drawn screen visible.
+            # make the most recently drawn screen visible, i.e. updates the game window.
             pygame.display.flip()
 
 if __name__ == '__main__':
