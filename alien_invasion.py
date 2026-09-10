@@ -4,7 +4,8 @@ from time import sleep
 import pygame
 
 from settings import Settings
-from game_stats import GameStats 
+from game_stats import GameStats
+from scoreboard import Scoreboard
 from button import Button 
 from ship import Ship
 from bullet import Bullet
@@ -29,8 +30,9 @@ class AlienInvasion:
         
         pygame.display.set_caption("Alien Invasion")
 
-        #create an instance to store game statistics.
+        #create an instance to store game statistics, and create a scoreboard
         self.stats = GameStats(self)
+        self.sb = Scoreboard(self)
 
         self.ship = Ship(self)
         self.bullets = pygame.sprite.Group()
@@ -86,6 +88,10 @@ class AlienInvasion:
             self._create_fleet()
             self.ship.center_ship()
 
+            #reset the game statistics
+            self.stats.reset_stats()
+            self.sb.prep_score()
+
             #hide the mouse cursor.
             pygame.mouse.set_visible(False)
 
@@ -131,6 +137,11 @@ class AlienInvasion:
         collisions = pygame.sprite.groupcollide(
             self.bullets, self.aliens, True, True)
 
+        if collisions:
+            for aliens in collisions.values():
+                self.stats.score += self.settings.alien_points * len(aliens)
+            self.sb.prep_score()
+
         if not self.aliens:
             #destroy exisitng bullets and create new fleet.
             self.bullets.empty()
@@ -155,6 +166,10 @@ class AlienInvasion:
             sleep(0.5)
         else:
             self.game_active = False
+
+            # Add the final score to the top 3.
+            self.sb.update_high_scores()
+
             pygame.mouse.set_visible(True)
 
     def _update_aliens(self):
@@ -223,9 +238,13 @@ class AlienInvasion:
         self.ship.blitme()
         self.aliens.draw(self.screen)
 
+        #drae the score information.
+        self.sb.show_score()
+
         #draw the play button if the game is inactive.
         if not self.game_active:
             self.play_button.draw_button()
+            self.sb.show_high_scores()
 
         # make the most recently drawn screen visible, i.e. updates the game window.
         pygame.display.flip()
