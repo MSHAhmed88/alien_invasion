@@ -16,6 +16,7 @@ class Scoreboard:
         #font settings for scoring information.
         self.text_color = (255, 255, 255)
         self.font = pygame.font.SysFont(None, 48)
+        self.game_over_font = pygame.font.SysFont(None, 72)
 
         #prepare the initial score images.
         self.prep_score()
@@ -140,5 +141,42 @@ class Scoreboard:
             self.settings.health_bar_height),
             2
         )
+
+    def show_game_over(self):
+        """Display the game-over information."""
+        game_over_image = self.game_over_font.render(
+            "GAME OVER",
+            True,
+            self.text_color,
+            self.settings.bg_color
+        )
+
+        game_over_rect = game_over_image.get_rect()
+        game_over_rect.centerx = self.screen_rect.centerx
+        game_over_rect.top = 100
+
+        self.screen.blit(game_over_image, game_over_rect)
+
+    def show_game_over_stats(self):
+        """Display the final game statistics."""
+        stats = [
+            f"Final Score: {self.stats.score:,}",
+            f"Level Reached: {self.stats.level}",
+            f"Aliens Destroyed: {self.stats.aliens_destroyed}",
+        ]
+
+        for index, text in enumerate(stats):
+            stats_image = self.font.render(
+                text,
+                True,
+                self.text_color,
+                self.settings.bg_color
+            )
+
+            stats_rect = stats_image.get_rect()
+            stats_rect.centerx = self.screen_rect.centerx
+            stats_rect.top = 200 + (index * 50)
+
+            self.screen.blit(stats_image, stats_rect)
 
     

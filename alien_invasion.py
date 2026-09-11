@@ -11,6 +11,7 @@ from ship import Ship
 from bullet import Bullet
 from alien import Alien
 from alien_bullet import AlienBullet
+from explosion import Explosion
 
 class AlienInvasion:
     """Overall class to manage game assets and behaviour"""
@@ -39,6 +40,7 @@ class AlienInvasion:
         self.bullets = pygame.sprite.Group()
         self.aliens = pygame.sprite.Group()
         self.alien_bullets = pygame.sprite.Group()
+        self.explosions = pygame.sprite.Group()
         self.alien_shot_timer = 0
         self.ship_invulnerability_timer = 0
 
@@ -60,6 +62,7 @@ class AlienInvasion:
                 self._update_bullets()
                 self._update_aliens()
                 self._update_alien_bullets()
+                self.explosions.update()
 
                 self.ship_invulnerability_timer -= self.clock.get_time()
 
@@ -203,7 +206,13 @@ class AlienInvasion:
 
         if collisions:
             for aliens in collisions.values():
+                for alien in aliens:
+                    explosion = Explosion(self, alien)
+                    self.explosions.add(explosion)
+
                 self.stats.score += self.settings.alien_points * len(aliens)
+                self.stats.aliens_destroyed += len(aliens)
+
             self.sb.prep_score()
 
         if not self.aliens:
@@ -224,6 +233,8 @@ class AlienInvasion:
         # Check whether the ship has been destroyed.
         if self.stats.ship_health <= 0:
             self.game_active = False
+            self.aliens.empty()
+            self.alien_bullets.empty()
 
             # Add the final score to the top 3.
             self.sb.update_high_scores()
@@ -311,6 +322,10 @@ class AlienInvasion:
         self.ship.blitme()
         self.aliens.draw(self.screen)
 
+        #draw alien ship explosions.
+        for explosion in self.explosions:
+            explosion.draw()
+
         #draw the score information.
         self.sb.show_score()
 
@@ -319,6 +334,8 @@ class AlienInvasion:
 
         #draw the play button if the game is inactive.
         if not self.game_active:
+            self.sb.show_game_over()
+            self.sb.show_game_over_stats()
             self.play_button.draw_button()
             self.sb.show_high_scores()
 

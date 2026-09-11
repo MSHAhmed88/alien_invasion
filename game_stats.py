@@ -13,3 +13,4 @@ class GameStats:
         self.ship_health = self.settings.ship_health
         self.score = 0
         self.level = 1
+        self.aliens_destroyed = 0
