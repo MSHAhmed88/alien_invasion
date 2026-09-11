@@ -6,19 +6,29 @@ class Settings:
         #screen settings.
         self.screen_width = 1200
         self.screen_height = 800
-        self.bg_color = (230, 230, 230)
+        self.bg_color = (0, 0, 0)
 
         #ship settings
-        self.ship_limit = 2
+        self.ship_health = 100
+        self.health_bar_width = 200
+        self.health_bar_height = 20
+        self.ship_invulnerability_time = 5000
 
         #bullet settings
         self.bullet_width = 4
         self.bullet_height = 20
-        self.bullet_color = (60, 60, 60)
+        self.bullet_color = (255, 255, 255)
         self.bullets_allowed = 100
 
         #Alien settings
-        self.fleet_drop_speed = 50
+        self.fleet_drop_speed = 30
+        self.alien_shot_interval = 2000
+
+        #alien bullet settings
+        self.alien_bullet_speed = 2.5
+        self.alien_bullet_width = 4
+        self.alien_bullet_height = 15
+        self.alien_bullet_color = (255, 0, 0)
 
         #how quickly the game speeds up.
         self.speedup_scale = 1.2

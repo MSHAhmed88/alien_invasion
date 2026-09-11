@@ -1,22 +1,26 @@
 import pygame.font
+from pygame.sprite import Group
+from ship import Ship
 
 class Scoreboard:
     """A class to report scoring information."""
 
     def __init__(self, ai_game):
         """Initializing scorekeeping attributes."""
+        self.ai_game = ai_game
         self.screen = ai_game.screen
         self.screen_rect = self.screen.get_rect()
         self.settings = ai_game.settings
         self.stats = ai_game.stats
 
         #font settings for scoring information.
-        self.text_color = (30, 30, 30)
+        self.text_color = (255, 255, 255)
         self.font = pygame.font.SysFont(None, 48)
 
         #prepare the initial score images.
         self.prep_score()
         self.prep_high_scores()
+        self.prep_level()
 
     def prep_score(self):
         """Turn the score into a rendered image."""
@@ -51,9 +55,21 @@ class Scoreboard:
             self.high_score_images.append(score_image)
             self.high_score_rects.append(score_rect)
 
+    def prep_level(self):
+        """Turn the level into a rendered image."""
+        level_str = str(self.stats.level)
+        self.level_image = self.font.render(level_str, True,
+                self.text_color, self.settings.bg_color)
+
+        #position the level below the score.
+        self.level_rect = self.level_image.get_rect()
+        self.level_rect.right = self.score_rect.right
+        self.level_rect.top = self.score_rect.bottom + 10
+
     def show_score(self):
-        """Draw the current score to the screen."""
+        """Draw scores, level and ships to the screen."""
         self.screen.blit(self.score_image, self.score_rect)
+        self.screen.blit(self.level_image, self.level_rect)
 
     def show_high_scores(self):
         """Draw the top 3 scores to the screen."""
@@ -73,5 +89,56 @@ class Scoreboard:
 
         # Prepare the new score images.
         self.prep_high_scores()
+
+    def show_health_bar(self):
+        """Draw the ship's health bar."""
+        health_ratio = self.stats.ship_health / self.settings.ship_health
+        health_text = f"Health: {self.stats.ship_health}%"
+
+        health_image = self.font.render(
+            health_text,
+            True,
+            self.text_color,
+            self.settings.bg_color
+        )
+
+        health_rect = health_image.get_rect()
+        health_rect.left = 20
+        health_rect.bottom = 45
+
+        self.screen.blit(health_image, health_rect)
+
+        # Draw the health bar background.
+        pygame.draw.rect(
+            self.screen,
+            (100, 100, 100),
+            (20, 55, self.settings.health_bar_width,
+            self.settings.health_bar_height)
+        )
+
+        if self.stats.ship_health >= 60:
+            health_color = (0, 255, 0)
+        elif self.stats.ship_health >= 30:
+            health_color = (255, 255, 0)
+        else:
+            health_color = (255, 0, 0)
+
+        # Draw the remaining health.
+        pygame.draw.rect(
+            self.screen,
+            health_color,
+            (20, 55,
+            self.settings.health_bar_width * health_ratio,
+            self.settings.health_bar_height)
+        )
+
+        # Draw a border around the health bar.
+        pygame.draw.rect(
+            self.screen,
+            (255, 255, 255),
+            (20, 55, self.settings.health_bar_width,
+            self.settings.health_bar_height),
+            2
+        )
 
     

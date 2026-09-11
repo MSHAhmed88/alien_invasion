@@ -9,7 +9,8 @@ from scoreboard import Scoreboard
 from button import Button 
 from ship import Ship
 from bullet import Bullet
-from alien import Alien 
+from alien import Alien
+from alien_bullet import AlienBullet
 
 class AlienInvasion:
     """Overall class to manage game assets and behaviour"""
@@ -37,6 +38,9 @@ class AlienInvasion:
         self.ship = Ship(self)
         self.bullets = pygame.sprite.Group()
         self.aliens = pygame.sprite.Group()
+        self.alien_bullets = pygame.sprite.Group()
+        self.alien_shot_timer = 0
+        self.ship_invulnerability_timer = 0
 
         self._create_fleet()
 
@@ -55,6 +59,15 @@ class AlienInvasion:
                 self.ship.update()
                 self._update_bullets()
                 self._update_aliens()
+                self._update_alien_bullets()
+
+                self.ship_invulnerability_timer -= self.clock.get_time()
+
+                # Increase the alien firing timer. 
+                self.alien_shot_timer += self.clock.get_time()
+
+                # Check whether the aliens should fire.
+                self._check_alien_shooting()
             
             self._update_screen()
             self.clock.tick(60)
@@ -83,6 +96,8 @@ class AlienInvasion:
             #get rid of any remaining bullets and liens.
             self.bullets.empty()
             self.aliens.empty()
+            self.alien_bullets.empty()
+            self.alien_shot_timer = 0
 
             #create a new fleet and center the ship.
             self._create_fleet()
@@ -91,6 +106,7 @@ class AlienInvasion:
             #reset the game statistics
             self.stats.reset_stats()
             self.sb.prep_score()
+            self.sb.prep_level()
 
             #hide the mouse cursor.
             pygame.mouse.set_visible(False)
@@ -119,6 +135,35 @@ class AlienInvasion:
             new_bullet = Bullet(self)
             self.bullets.add(new_bullet)
 
+    def _fire_alien_bullet(self, alien):
+        """Fire a bullet from an alien."""
+        new_bullet = AlienBullet(self, alien)
+        self.alien_bullets.add(new_bullet)
+
+    def _check_alien_shooting(self):
+        """Fire bullets from the bottom alien in each column."""
+        if self.alien_shot_timer >= self.settings.alien_shot_interval:
+            bottom_aliens = self._get_bottom_aliens()
+
+            for alien in bottom_aliens:
+                self._fire_alien_bullet(alien)
+
+            self.alien_shot_timer = 0
+
+    def _get_bottom_aliens(self):
+        """Find the bottom alien in each column."""
+        bottom_aliens = {}
+
+        for alien in self.aliens.sprites():
+            column_x = alien.rect.centerx
+
+            if column_x not in bottom_aliens:
+                bottom_aliens[column_x] = alien
+            elif alien.rect.y > bottom_aliens[column_x].rect.y:
+                bottom_aliens[column_x] = alien
+
+        return list(bottom_aliens.values())
+
     def _update_bullets(self):
         """Update position of bullets and get rid of old bullets."""
         #update bullet positions.
@@ -130,6 +175,25 @@ class AlienInvasion:
                 self.bullets.remove(bullet)
 
         self._check_bullet_alien_collisions()
+
+    def _update_alien_bullets(self): 
+        """Update the alien bullets and remove bullets off screen."""
+        self.alien_bullets.update()
+
+        for bullet in self.alien_bullets.copy(): 
+            if bullet.rect.top >= self.settings.screen_height:
+                self.alien_bullets.remove(bullet)
+
+        self._check_alien_bullet_collisions()
+
+    def _check_alien_bullet_collisions(self):
+        """Check for collisions between alien bullets and the ship."""
+        for bullet in self.alien_bullets.copy():
+            if (bullet.rect.colliderect(self.ship.rect)
+                    and self.ship_invulnerability_timer <= 0):
+                self.alien_bullets.remove(bullet)
+                self._ship_hit()
+                break
 
     def _check_bullet_alien_collisions(self):
         """respond to bullet-alien collisions."""
@@ -148,29 +212,35 @@ class AlienInvasion:
             self._create_fleet()
             self.settings.increase_speed()
 
+            #increase level.
+            self.stats.level += 1
+            self.sb.prep_level()
+
     def _ship_hit(self):
         """Respond to the ship being hit by an alien."""
-        if self.stats.ships_left > 0:
-            #decrement ships_left.
-            self.stats.ships_left -= 1
+        self.stats.ship_health -= 10
+        self.ship_invulnerability_timer = self.settings.ship_invulnerability_time
 
-            #get rid of any remaining bullets and aliens.
-            self.bullets.empty()
-            self.aliens.empty()
-
-            #create a new fleet and center the ship.
-            self._create_fleet()
-            self.ship.center_ship()
-
-            #Pause.
-            sleep(0.5)
-        else:
+        # Check whether the ship has been destroyed.
+        if self.stats.ship_health <= 0:
             self.game_active = False
 
             # Add the final score to the top 3.
             self.sb.update_high_scores()
 
             pygame.mouse.set_visible(True)
+            return
+
+        # Get rid of any remaining bullets.
+        self.bullets.empty()
+        self.alien_bullets.empty()
+        self.alien_shot_timer = 0
+
+        # Center the ship.
+        self.ship.center_ship()
+
+        # Pause briefly.
+        sleep(0.5)
 
     def _update_aliens(self):
         """Check if the fleet is at an edge, then update positions."""
@@ -191,15 +261,16 @@ class AlienInvasion:
         alien = Alien(self)
         alien_width, alien_height = alien.rect.size
 
-        current_x, current_y = alien_width, alien_height
-        while current_y < (self.settings.screen_height - 9 * alien_height):
+        current_x, current_y = alien_width, 100
+        while current_y < 400:
             while current_x < (self.settings.screen_width - 2 * alien_width):
                 self._create_alien(current_x, current_y)
-                current_x += 2 * alien_width 
+                current_x += 4 * alien_width 
 
             #finished a row; reset x value, and increment y value.
             current_x = alien_width
             current_y += 2 * alien_height 
+
 
     def _create_alien(self, x_position, y_position):
         """create an alien and place it in the fleet."""
@@ -235,11 +306,16 @@ class AlienInvasion:
         self.screen.fill(self.settings.bg_color)
         for bullet in self.bullets.sprites():
             bullet.draw_bullet()
+        for bullet in self.alien_bullets.sprites():
+            bullet.draw_bullet()
         self.ship.blitme()
         self.aliens.draw(self.screen)
 
-        #drae the score information.
+        #draw the score information.
         self.sb.show_score()
+
+        #draw the health bar information.
+        self.sb.show_health_bar()
 
         #draw the play button if the game is inactive.
         if not self.game_active:
