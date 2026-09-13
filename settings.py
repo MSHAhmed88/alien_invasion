@@ -30,6 +30,13 @@ class Settings:
         self.alien_bullet_height = 15
         self.alien_bullet_color = (255, 0, 0)
 
+        #power up settings.
+        self.power_up_drop_chance = 0.07
+        self.rapid_fire_duration = 10
+        self.rapid_fire_bullet_speed = 2
+        self.rapid_fire_interval = 100
+        self.shield_duration = 5
+
         #how quickly the game speeds up.
         self.speedup_scale = 1.2
         #how quickly the alien point valie increases.
@@ -39,7 +46,7 @@ class Settings:
 
     def initialize_dynamic_settings(self):
         """Initialize settings that change throughout the game."""
-        self.ship_speed = 3
+        self.ship_speed = 5
         self.bullet_speed = 3
         self.alien_speed = 1.0
 

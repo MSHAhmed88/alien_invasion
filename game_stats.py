@@ -14,3 +14,5 @@ class GameStats:
         self.score = 0
         self.level = 1
         self.aliens_destroyed = 0
+        self.rapid_fire_timer = 0
+        self.shield_timer = 0

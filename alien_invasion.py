@@ -1,4 +1,5 @@
 import sys
+import random
 from time import sleep
 
 import pygame
@@ -12,6 +13,7 @@ from bullet import Bullet
 from alien import Alien
 from alien_bullet import AlienBullet
 from explosion import Explosion
+from power_up import PowerUp
 
 class AlienInvasion:
     """Overall class to manage game assets and behaviour"""
@@ -41,13 +43,17 @@ class AlienInvasion:
         self.aliens = pygame.sprite.Group()
         self.alien_bullets = pygame.sprite.Group()
         self.explosions = pygame.sprite.Group()
+        self.power_ups = pygame.sprite.Group()
         self.alien_shot_timer = 0
         self.ship_invulnerability_timer = 0
+        self.firing = False
+        self.rapid_fire_shot_timer = 0
 
         self._create_fleet()
 
         #start Alien Invasion in an active state.
-        self.game_active = False 
+        self.game_active = False
+        self.game_started = False
 
         #make the play button.
         self.play_button = Button(self, "Play")
@@ -62,9 +68,20 @@ class AlienInvasion:
                 self._update_bullets()
                 self._update_aliens()
                 self._update_alien_bullets()
+                self._check_power_up_collisions()
                 self.explosions.update()
+                self.power_ups.update()
 
                 self.ship_invulnerability_timer -= self.clock.get_time()
+                self.stats.rapid_fire_timer -= self.clock.get_time() / 1000
+                self.stats.shield_timer -= self.clock.get_time() / 1000
+
+                if self.firing and self.stats.rapid_fire_timer > 0:
+                    self.rapid_fire_shot_timer -= self.clock.get_time()
+
+                    if self.rapid_fire_shot_timer <= 0:
+                        self._fire_bullet()
+                        self.rapid_fire_shot_timer = self.settings.rapid_fire_interval
 
                 # Increase the alien firing timer. 
                 self.alien_shot_timer += self.clock.get_time()
@@ -94,7 +111,8 @@ class AlienInvasion:
         if button_clicked and not self.game_active:
             #reset the game settings.
             self.settings.initialize_dynamic_settings()
-            self.game_active = True 
+            self.game_active = True
+            self.game_started = True
 
             #get rid of any remaining bullets and liens.
             self.bullets.empty()
@@ -123,6 +141,7 @@ class AlienInvasion:
         elif event.key == pygame.K_q:
             sys.exit()
         elif event.key == pygame.K_SPACE:
+            self.firing = True
             self._fire_bullet()
 
     def _check_keyup_events(self, event):
@@ -131,6 +150,8 @@ class AlienInvasion:
             self.ship.moving_right = False
         elif event.key == pygame.K_LEFT:
             self.ship.moving_left = False
+        elif event.key == pygame.K_SPACE:
+            self.firing = False
 
     def _fire_bullet(self):
         """Create a new bullet and add it to the bullets group."""
@@ -193,7 +214,8 @@ class AlienInvasion:
         """Check for collisions between alien bullets and the ship."""
         for bullet in self.alien_bullets.copy():
             if (bullet.rect.colliderect(self.ship.rect)
-                    and self.ship_invulnerability_timer <= 0):
+                    and self.ship_invulnerability_timer <= 0
+                    and self.stats.shield_timer <= 0):
                 self.alien_bullets.remove(bullet)
                 self._ship_hit()
                 break
@@ -209,6 +231,7 @@ class AlienInvasion:
                 for alien in aliens:
                     explosion = Explosion(self, alien)
                     self.explosions.add(explosion)
+                    self._maybe_drop_power_up(alien)
 
                 self.stats.score += self.settings.alien_points * len(aliens)
                 self.stats.aliens_destroyed += len(aliens)
@@ -252,6 +275,50 @@ class AlienInvasion:
 
         # Pause briefly.
         sleep(0.5)
+
+    def _check_power_up_collisions(self):
+        """Check for collisions between power-ups and the ship."""
+        collisions = pygame.sprite.spritecollide(
+            self.ship,
+            self.power_ups,
+            True
+        )
+
+        for power_up in collisions:
+            if power_up.power_up_type == "health":
+                self.stats.ship_health += 10
+
+                if self.stats.ship_health > self.settings.ship_health:
+                    self.stats.ship_health = self.settings.ship_health
+
+            elif power_up.power_up_type == "rapid_fire":
+                self.stats.rapid_fire_timer = self.settings.rapid_fire_duration
+                self.rapid_fire_shot_timer = 0
+
+            elif power_up.power_up_type == "shield":
+                self.stats.shield_timer = self.settings.shield_duration
+
+    def _maybe_drop_power_up(self, alien):
+        """Randomly create a power-up when an alien is destroyed."""
+        if random.random() < self.settings.power_up_drop_chance:
+
+            if self.stats.ship_health < self.settings.ship_health:
+                power_up_type = random.choices(
+                    ["health", "rapid_fire", "shield"],
+                    weights=[75, 15, 10],
+                    k=1
+                )[0]
+            else:
+                power_up_type = random.choices(
+                    ["rapid_fire", "shield"],
+                    weights=[60, 40],
+                    k=1
+                )[0]
+
+            power_up = PowerUp(self, power_up_type)
+            power_up.rect.center = alien.rect.center
+            power_up.y = float(power_up.rect.y)
+            self.power_ups.add(power_up)
 
     def _update_aliens(self):
         """Check if the fleet is at an edge, then update positions."""
@@ -326,6 +393,10 @@ class AlienInvasion:
         for explosion in self.explosions:
             explosion.draw()
 
+        #draw power ups.
+        for power_up in self.power_ups:
+            power_up.draw()
+
         #draw the score information.
         self.sb.show_score()
 
@@ -333,14 +404,26 @@ class AlienInvasion:
         self.sb.show_health_bar()
 
         #draw the play button if the game is inactive.
-        if not self.game_active:
+        if not self.game_active and self.game_started:
+            self.sb.show_game_over_box()
+            self.sb.show_high_scores_title()
+            self.sb.show_high_scores()
             self.sb.show_game_over()
             self.sb.show_game_over_stats()
+
+        # Draw the Play button when the game is inactive.
+        if not self.game_active:
             self.play_button.draw_button()
-            self.sb.show_high_scores()
 
         # make the most recently drawn screen visible, i.e. updates the game window.
         pygame.display.flip()
+
+    def _create_test_power_up(self):
+        """Create a test power-up."""
+        power_up = PowerUp(self, "health")
+        power_up.rect.center = self.screen.get_rect().center
+        power_up.y = float(power_up.rect.y)
+        self.power_ups.add(power_up)
 
 
 if __name__ == '__main__':

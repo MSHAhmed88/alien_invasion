@@ -35,6 +35,21 @@ class Scoreboard:
         self.score_rect.right = self.screen_rect.right - 20
         self.score_rect.top = 20
 
+    def show_high_scores_title(self):
+        """Display the Top Scores heading."""
+        title_image = self.font.render(
+            "TOP SCORES",
+            True,
+            self.text_color,
+            self.settings.bg_color
+        )
+
+        title_rect = title_image.get_rect()
+        title_rect.centerx = self.screen_rect.centerx
+        title_rect.top = 30
+
+        self.screen.blit(title_image, title_rect)
+
     def prep_high_scores(self):
         """Turn the top 3 scores into rendered images."""
         self.high_score_images = []
@@ -51,7 +66,7 @@ class Scoreboard:
 
             score_rect = score_image.get_rect()
             score_rect.centerx = self.screen_rect.centerx
-            score_rect.top = 20 + (rank * 50)
+            score_rect.top = 75 + (rank * 40)
 
             self.high_score_images.append(score_image)
             self.high_score_rects.append(score_rect)
@@ -153,7 +168,7 @@ class Scoreboard:
 
         game_over_rect = game_over_image.get_rect()
         game_over_rect.centerx = self.screen_rect.centerx
-        game_over_rect.top = 100
+        game_over_rect.top = 210
 
         self.screen.blit(game_over_image, game_over_rect)
 
@@ -175,8 +190,29 @@ class Scoreboard:
 
             stats_rect = stats_image.get_rect()
             stats_rect.centerx = self.screen_rect.centerx
-            stats_rect.top = 200 + (index * 50)
+            stats_rect.top = 280 + (index * 40)
 
             self.screen.blit(stats_image, stats_rect)
+
+    def show_game_over_box(self):
+        """Draw a border around the game-over information."""
+        box_width = 600
+        box_height = 475
+
+        box_rect = pygame.Rect(
+            0,
+            5,
+            box_width,
+            box_height
+        )
+
+        box_rect.centerx = self.screen_rect.centerx
+
+        pygame.draw.rect(
+            self.screen,
+            (255, 255, 255),
+            box_rect,
+            3
+        )
 
     
