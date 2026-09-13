@@ -24,6 +24,10 @@ class Settings:
         self.fleet_drop_speed = 30
         self.alien_shot_interval = 2000
 
+        #Boss settings.
+        self.boss_health = 50
+        self.boss_level = 5
+
         #alien bullet settings
         self.alien_bullet_speed = 2.5
         self.alien_bullet_width = 4

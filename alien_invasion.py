@@ -14,6 +14,8 @@ from alien import Alien
 from alien_bullet import AlienBullet
 from explosion import Explosion
 from power_up import PowerUp
+from boss import Boss
+from boss_bullet import BossBullet
 
 class AlienInvasion:
     """Overall class to manage game assets and behaviour"""
@@ -42,6 +44,9 @@ class AlienInvasion:
         self.bullets = pygame.sprite.Group()
         self.aliens = pygame.sprite.Group()
         self.alien_bullets = pygame.sprite.Group()
+        self.bosses = pygame.sprite.Group()
+        self.boss_bullets = pygame.sprite.Group()
+        self.boss_shot_timer = 0
         self.explosions = pygame.sprite.Group()
         self.power_ups = pygame.sprite.Group()
         self.alien_shot_timer = 0
@@ -67,6 +72,19 @@ class AlienInvasion:
                 self.ship.update()
                 self._update_bullets()
                 self._update_aliens()
+                self.bosses.update()
+                self._update_boss_bullets()
+                self._check_boss_bullet_collisions()
+
+                if self.bosses:
+                    self.boss_shot_timer += self.clock.get_time()
+
+                    if self.boss_shot_timer >= 1000:
+                        for boss in self.bosses:
+                            self._fire_boss_bullet(boss)
+
+                        self.boss_shot_timer = 0
+
                 self._update_alien_bullets()
                 self._check_power_up_collisions()
                 self.explosions.update()
@@ -132,6 +150,7 @@ class AlienInvasion:
             #hide the mouse cursor.
             pygame.mouse.set_visible(False)
 
+
     def _check_keydown_events(self, event):
         """Respond to keypresses."""
         if event.key == pygame.K_RIGHT:
@@ -163,6 +182,11 @@ class AlienInvasion:
         """Fire a bullet from an alien."""
         new_bullet = AlienBullet(self, alien)
         self.alien_bullets.add(new_bullet)
+
+    def _fire_boss_bullet(self, boss):
+        """Fire a bullet from the boss."""
+        new_bullet = BossBullet(self, boss)
+        self.boss_bullets.add(new_bullet)
 
     def _check_alien_shooting(self):
         """Fire bullets from the bottom alien in each column."""
@@ -210,6 +234,14 @@ class AlienInvasion:
 
         self._check_alien_bullet_collisions()
 
+    def _update_boss_bullets(self):
+        """Update the boss bullets and remove bullets off screen."""
+        self.boss_bullets.update()
+
+        for bullet in self.boss_bullets.copy():
+            if bullet.rect.top >= self.settings.screen_height:
+                self.boss_bullets.remove(bullet)
+
     def _check_alien_bullet_collisions(self):
         """Check for collisions between alien bullets and the ship."""
         for bullet in self.alien_bullets.copy():
@@ -238,19 +270,57 @@ class AlienInvasion:
 
             self.sb.prep_score()
 
-        if not self.aliens:
-            #destroy exisitng bullets and create new fleet.
+        if not self.aliens and not self.bosses:
+            # Destroy existing bullets.
             self.bullets.empty()
-            self._create_fleet()
-            self.settings.increase_speed()
 
-            #increase level.
+            # Increase level.
             self.stats.level += 1
             self.sb.prep_level()
 
-    def _ship_hit(self):
-        """Respond to the ship being hit by an alien."""
-        self.stats.ship_health -= 10
+            # Create the boss at the boss level.
+            if self.stats.level == self.settings.boss_level:
+                self._create_boss()
+            else:
+                self._create_fleet()
+                self.settings.increase_speed()
+
+        # Check for collisions between bullets and the boss.
+        for bullet in self.bullets.copy():
+            boss_collisions = pygame.sprite.spritecollide(
+                bullet,
+                self.bosses,
+                False
+            )
+
+            if boss_collisions:
+                bullet.kill()
+
+                for boss in boss_collisions:
+                    boss.health -= 1
+
+                    if boss.health <= 0:
+                        explosion = Explosion(self, boss, size=160)
+                        self.explosions.add(explosion)
+
+                        boss.kill()
+
+    def _check_boss_bullet_collisions(self):
+        """Check for collisions between boss bullets and the ship."""
+
+        for bullet in self.boss_bullets.copy():
+
+            if (bullet.rect.colliderect(self.ship.rect)
+                    and self.ship_invulnerability_timer <= 0
+                    and self.stats.shield_timer <= 0):
+
+                self.boss_bullets.remove(bullet)
+                self._ship_hit(damage=20)
+                break
+
+    def _ship_hit(self, damage=10):
+        """Respond to the ship being hit."""
+        self.stats.ship_health -= damage
         self.ship_invulnerability_timer = self.settings.ship_invulnerability_time
 
         # Check whether the ship has been destroyed.
@@ -258,6 +328,8 @@ class AlienInvasion:
             self.game_active = False
             self.aliens.empty()
             self.alien_bullets.empty()
+            self.bosses.empty()
+            self.boss_bullets.empty()
 
             # Add the final score to the top 3.
             self.sb.update_high_scores()
@@ -388,6 +460,11 @@ class AlienInvasion:
             bullet.draw_bullet()
         self.ship.blitme()
         self.aliens.draw(self.screen)
+        for boss in self.bosses:
+            self.screen.blit(boss.image, boss.rect)
+            boss.draw_health_bar()
+        for bullet in self.boss_bullets:
+            bullet.draw_bullet()
 
         #draw alien ship explosions.
         for explosion in self.explosions:
@@ -418,12 +495,11 @@ class AlienInvasion:
         # make the most recently drawn screen visible, i.e. updates the game window.
         pygame.display.flip()
 
-    def _create_test_power_up(self):
-        """Create a test power-up."""
-        power_up = PowerUp(self, "health")
-        power_up.rect.center = self.screen.get_rect().center
-        power_up.y = float(power_up.rect.y)
-        self.power_ups.add(power_up)
+
+    def _create_boss(self):
+        """Create the boss."""
+        boss = Boss(self)
+        self.bosses.add(boss)
 
 
 if __name__ == '__main__':

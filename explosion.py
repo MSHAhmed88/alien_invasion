@@ -5,14 +5,17 @@ from pygame.sprite import Sprite
 class Explosion(Sprite):
     """A class to display an explosion."""
 
-    def __init__(self, ai_game, alien):
+    def __init__(self, ai_game, alien, size=70):
         """Create an explosion at the alien's position."""
         super().__init__()
 
         self.screen = ai_game.screen
 
         self.image = pygame.image.load('images/explosion.png')
-        self.image = pygame.transform.scale(self.image, (70, 70))
+        self.image = pygame.transform.scale(
+            self.image,
+            (size, size)
+        )
 
         self.rect = self.image.get_rect()
         self.rect.center = alien.rect.center

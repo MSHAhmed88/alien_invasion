@@ -9,6 +9,7 @@ class Ship(Sprite):
         super().__init__()
         self.screen = ai_game.screen
         self.settings = ai_game.settings
+        self.stats = ai_game.stats
         self.screen_rect = ai_game.screen.get_rect()
 
         #load the ship image and get its rect.
@@ -38,8 +39,17 @@ class Ship(Sprite):
         self.rect.x = self.x
 
     def blitme(self):
-        """draw the ship at its current location."""
+        """Draw the ship at its current location."""
         self.screen.blit(self.image, self.rect)
+
+        if self.stats.shield_timer > 0:
+            pygame.draw.circle(
+                self.screen,
+                (0, 150, 255),
+                self.rect.center,
+                45,
+                3
+            )
 
     def center_ship(self):
         """Center the ship on the screen."""
